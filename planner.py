@@ -2,19 +2,44 @@ import json
 import os
 from pprint import pprint
 import operator
+import math
 
-def onLeft(anchor,point1,point2):
-    # although the coordinate is stretched with only lat and log, the relative geometry relation still holds
-    # lat as y, lnt as x
-    val = (point2.lnt - anchor.lnt)*(point1.lat - anchor.lat) - (point2.lat - anchor.lat)*(point1.lnt - anchor.lnt)
-    if val > 0:
-        return True
-    elif val < 0:
-        return False
-    else:
-        return None
+def onleftcompare(anchor,point1):
+    def onLeft(point2):
+        # although the coordinate is stretched with only lat and log, the relative geometry relation still holds
+        # lat as y, lnt as x (vector from point to anchor)
+        val = (point2.lng - anchor.lng)*(point1.lat - anchor.lat) - (point2.lat - anchor.lat)*(point1.lng - anchor.lng)
+        if val > 0:
+            return True
+        elif val < 0:
+            return False
+        else:
+            return None
+    return onLeft
 
+def angled(anchor,point1):
+    a=distance(anchor,point1)
+    def includedangle(point2):
+        b = distance(anchor,point2)
+        c = distance(point1,point2)
+        cos = (a*a+b*b-c*c)/(2*a*b)
+        return math.acos(cos)
+    return includedangle
+        
 
+def distance(origin, destination):
+    lat1, lng1 = origin.lat, origin.lng
+    lat2, lng2 = destination.lat, destination.lng
+    radius = 6371 # km
+
+    dlat = math.radians(lat2-lat1)
+    dlng = math.radians(lng2-lng1)
+    a = math.sin(dlat/2) * math.sin(dlat/2) + math.cos(math.radians(lat1)) \
+        * math.cos(math.radians(lat2)) * math.sin(dlng/2) * math.sin(dlng/2)
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    d = radius * c
+
+    return d
 
 class portal:
     def __init__(self,json,id):
@@ -40,7 +65,7 @@ portals = []
 for i,k in enumerate(portals_json):
     portals.append(portal(portals_json[k],i))
 
-sorted_portals = sorted(portals,key=operator.attrgetter("name"))
+sorted_portals = sorted(portals, key=operator.attrgetter("name"))
 for po in sorted_portals:
     print(po)
 del sorted_portals
@@ -48,13 +73,37 @@ del sorted_portals
 anchor_num = input("please choose the portal you would like to use as anchor: ")
 anchor_num = int(anchor_num)
 if anchor_num >= len(portals) or anchor_num < 0:
-    raise Exception('invalid portal id')
+    raise Exception('invalid anchor portal id')
+    
+base_num = input("please choose the portal you would like to use to form the first edge: ")
+base_num = int(base_num)
+if base_num >= len(portals) or base_num < 0:
+    raise Exception('invalid base portal id')
 
 anchor = portals[anchor_num]
+base = portals[base_num]
+
+
 portals.pop(anchor_num)
+portals.remove(base)
 print("the portal your chose as anchor is: "+str(anchor))
 
-edge_num = intput("please choose the portal you would like to use to form the first edge")
 left_list = []
 right_list = []
+onleft = onleftcompare(anchor,base)
+for i in portals:
+    is_on_left = onleft(i)
+    if is_on_left is True:
+        left_list.append(i)
+    elif is_on_left is False:
+        right_list.append(i)
+
+angleDist = angled(anchor, base)
+left_list.sort(key=angleDist)
+right_list.sort(key=angleDist)
+print("on left")
+for i in left_list:
+    print(str(i))
+
+
 
