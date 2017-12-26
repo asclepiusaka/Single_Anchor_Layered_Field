@@ -1,12 +1,13 @@
+"""a small python utility to plan single central portal layered fields"""
 import json
 import os
 from pprint import pprint
 import operator
 import math
 
-def onleftcompare(anchor,point1):
-    def onLeft(point2):
-        # although the coordinate is stretched with only lat and log, the relative geometry relation still holds
+def on_left_compare(anchor,point1):
+    def on_left(point2):
+        # although the coordinate is stretched with only lat and log info, the relative geometry position still holds
         # lat as y, lnt as x (vector from point to anchor)
         val = (point2.lng - anchor.lng)*(point1.lat - anchor.lat) - (point2.lat - anchor.lat)*(point1.lng - anchor.lng)
         if val > 0:
@@ -15,16 +16,16 @@ def onleftcompare(anchor,point1):
             return False
         else:
             return None
-    return onLeft
+    return on_left
 
-def angled(anchor,point1):
+def angle_d(anchor,point1):
     a=distance(anchor,point1)
-    def includedangle(point2):
+    def included_angle(point2): 
         b = distance(anchor,point2)
         c = distance(point1,point2)
         cos = (a*a+b*b-c*c)/(2*a*b)
         return math.acos(cos)
-    return includedangle
+    return included_angle
         
 
 def distance(origin, destination):
@@ -41,12 +42,11 @@ def distance(origin, destination):
 
     return d
 
-class portal:
+class Portal:
     def __init__(self,json,id):
         self.id = id
         self.name = json['label']
-        latlng = json['latlng']
-        latlng = latlng.split(',')
+        latlng = json['latlng'].split(",")
         self.lat = float(latlng[0])
         self.lng = float(latlng[1])
 
@@ -63,7 +63,7 @@ portals_json = data['portals']['idOthers']['bkmrk']
 pprint(portals_json)
 portals = []
 for i,k in enumerate(portals_json):
-    portals.append(portal(portals_json[k],i))
+    portals.append(Portal(portals_json[k],i))
 
 sorted_portals = sorted(portals, key=operator.attrgetter("name"))
 for po in sorted_portals:
@@ -90,18 +90,18 @@ print("the portal your chose as anchor is: "+str(anchor))
 
 left_list = []
 right_list = []
-onleft = onleftcompare(anchor,base)
+on_left = on_left_compare(anchor,base)
 for i in portals:
-    is_on_left = onleft(i)
+    is_on_left = on_left(i)
     if is_on_left is True:
         left_list.append(i)
     elif is_on_left is False:
         right_list.append(i)
 
-angleDist = angled(anchor, base)
-left_list.sort(key=angleDist)
-right_list.sort(key=angleDist)
-print("on left")
+angle_dist = angle_d(anchor, base)
+left_list.sort(key=angle_dist)
+right_list.sort(key=angle_dist)
+print("on left portals:")
 for i in left_list:
     print(str(i))
 
